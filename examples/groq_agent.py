@@ -46,7 +46,7 @@ async def main(url: str, task: str, max_turns: int = 12) -> None:
             await b.record_start(os.environ["RECORD"])
         snap = await b.snapshot()
         messages = [{"role": "system", "content": SYSTEM},
-                    {"role": "user", "content": f"Task: {task}\n\nPage:\n{json.dumps(snap)}"}]
+                    {"role": "user", "content": f"Task: {task}\n\nPage:\n{snap['compact']}"}]
         for turn in range(max_turns):
             reply = await llm(messages)
             messages.append({"role": "assistant", "content": json.dumps(reply)})
@@ -54,9 +54,10 @@ async def main(url: str, task: str, max_turns: int = 12) -> None:
                 print("\nANSWER:", reply.get("answer"))
                 break
             result = await b.act_batch(reply.get("actions", []))
-            print(f"turn {turn + 1}: {reply.get('actions')} -> ok={result['ok']} "
-                  f"({result['snapshot']['tokens']} tokens back)")
-            messages.append({"role": "user", "content": json.dumps(result)})
+            page = result["snapshot"]["compact"] if result["snapshot"] else ""
+            status = "ok" if result["ok"] else f"failed at action {result['failed_at']}: {result['results'][-1]['error']}"
+            print(f"turn {turn + 1}: {reply.get('actions')} -> {status} ({result['snapshot']['compact_tokens']} tokens back)")
+            messages.append({"role": "user", "content": f"{status}\n\nPage:\n{page}"})
         if os.getenv("RECORD"):
             skill = await b.record_stop(description=task)
             print(f"saved skill '{skill['name']}' with {len(skill['steps'])} steps; replay it with no LLM.")

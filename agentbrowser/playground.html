@@ -70,7 +70,8 @@ function render(snap) {
   const stats = [
     snap.via ? `via ${snap.via}` : null,
     snap.ms != null ? `${snap.ms} ms` : null,
-    snap.tokens != null ? `${snap.tokens} tokens` : null,
+    snap.compact_tokens != null ? `${snap.compact_tokens} tokens (compact)` : null,
+    snap.tokens != null ? (snap.compact_tokens != null ? `${snap.tokens} as JSON` : `${snap.tokens} tokens`) : null,
     els.length ? `${els.length} elements` : null,
     snap.diff ? 'diff' : null,
   ].filter(Boolean).map(s => `<span class="pill">${s}</span>`).join('');

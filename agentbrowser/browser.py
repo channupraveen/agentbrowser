@@ -31,6 +31,27 @@ def approx_tokens(obj: Any) -> int:
     return len(str(obj)) // 4
 
 
+def _line(e: dict) -> str:
+    parts = [e["ref"], e["role"], e.get("name") or ""]
+    if e.get("value"):
+        parts.append(f'="{e["value"]}"')
+    if "checked" in e:
+        parts.append("[x]" if e["checked"] else "[ ]")
+    return " ".join(p for p in parts if p)
+
+
+def to_compact(snap: dict) -> str:
+    """Plain-text snapshot for LLM prompts: one line per element, no JSON overhead."""
+    head = f'{snap.get("title", "")}\n{snap.get("url", "")}'
+    if snap.get("diff"):
+        lines = [_line(e) for e in snap.get("added", []) + snap.get("changed", [])]
+        if snap.get("removed"):
+            lines.append("removed: " + " ".join(snap["removed"]))
+        return f"{head}\n\nchanged elements:\n" + "\n".join(lines) + f"\n\ntext:\n{snap['text']}"
+    lines = [_line(e) for e in snap.get("elements", [])]
+    return f"{head}\n\nelements:\n" + "\n".join(lines) + f"\n\ntext:\n{snap.get('text', '')}"
+
+
 class AgentBrowser:
     def __init__(self, data_dir: str | Path = ".agentbrowser", headless: bool = True,
                  block_resources: bool = True, action_timeout_ms: int = 5000):
@@ -104,6 +125,8 @@ class AgentBrowser:
         else:
             out = dict(snap, diff=False)
         out["tokens"] = approx_tokens(out)
+        out["compact"] = to_compact(out)
+        out["compact_tokens"] = approx_tokens(out["compact"])
         return out
 
     async def read(self, url: str, tab: str = "main", max_text: int = 8000) -> dict:
