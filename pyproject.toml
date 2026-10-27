@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentbrowser"
+version = "0.1.0"
+description = "A fast browser for AI agents: text snapshots, record-once/replay-instantly skills, and automatic API discovery."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Channu Praveen Kumar" }]
+dependencies = ["playwright>=1.45", "fastapi>=0.110", "uvicorn>=0.29", "httpx>=0.27"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["agentbrowser"]
+
+[tool.setuptools.package-data]
+agentbrowser = ["snapshot.js"]
