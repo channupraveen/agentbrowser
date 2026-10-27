@@ -12,6 +12,7 @@ from html.parser import HTMLParser
 import httpx
 
 SKIP = {"script", "style", "noscript", "svg", "head", "template", "iframe"}
+INLINE_GAP = {"a", "span", "td", "th", "button", "label", "b", "strong", "em", "i", "small"}
 BLOCK = {"p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "br", "section",
          "article", "header", "footer", "ul", "ol", "table", "pre", "blockquote"}
 JS_SHELL_HINTS = re.compile(r'id="(root|app|__next|__nuxt)"\s*>\s*</div>|enable javascript', re.I)
@@ -35,6 +36,8 @@ class _Text(HTMLParser):
             self._in_title = True
         if tag in BLOCK:
             self.out.append("\n")
+        elif tag in INLINE_GAP:
+            self.out.append(" ")
         if tag.startswith("h") and len(tag) == 2 and tag[1].isdigit():
             self.out.append("#" * int(tag[1]) + " ")
         if tag == "li":
@@ -55,6 +58,8 @@ class _Text(HTMLParser):
             self._href = None
         if tag in BLOCK:
             self.out.append("\n")
+        elif tag in INLINE_GAP:
+            self.out.append(" ")
 
     def handle_data(self, data):
         if self._in_title:

@@ -119,6 +119,7 @@ class AgentBrowser:
             result["via"] = "browser"
         else:
             result["text"] = result["text"][:max_text]
+            result["tokens"] = approx_tokens({k: result[k] for k in ("title", "text", "links")})
         result["ms"] = round((time.perf_counter() - t0) * 1000)
         return result
 
