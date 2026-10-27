@@ -19,4 +19,4 @@ dev = ["pytest>=8"]
 packages = ["agentbrowser"]
 
 [tool.setuptools.package-data]
-agentbrowser = ["snapshot.js"]
+agentbrowser = ["snapshot.js", "playground.html"]

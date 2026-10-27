@@ -1,0 +1,10 @@
+{
+  "name": "agentbrowser",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "pip install -e '.[dev]' && playwright install --with-deps chromium",
+  "postAttachCommand": "nohup uvicorn agentbrowser.server:app --host 0.0.0.0 --port 8787 > /tmp/agentbrowser.log 2>&1 &",
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": { "label": "agentbrowser playground", "onAutoForward": "openBrowser" }
+  }
+}

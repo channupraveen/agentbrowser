@@ -19,6 +19,13 @@ Most AI browser agents are slow for the same reason: every step is screenshot �
 
 **2. API discovery.** While the agent browses, every XHR/fetch that returns JSON is catalogued as an endpoint: method, path template (`/api/users/{id}/orders`), query params, redacted body example and response shape. Next time the agent can call that endpoint directly with the browser's cookies. In the tests that's ~15 ms instead of a full page interaction.
 
+## Try it in 2 minutes (works from a phone)
+
+1. On this repo, tap **Code → Codespaces → Create codespace on main**. (On a phone, switch your browser to "Desktop site" first.)
+2. Wait for setup to finish. It installs everything and starts the server.
+3. Open the **Ports** tab, then the globe icon next to port **8787**. The playground opens.
+4. Enter a URL and tap **Fast read** or **Open in browser**. Then tap elements, record a skill, and replay it with no AI.
+
 ## Quick start
 
 ```bash

@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from .browser import AgentBrowser
@@ -73,6 +75,14 @@ class ApiCall(BaseModel):
 
 def _clean(a: Action) -> dict:
     return {k: v for k, v in a.model_dump().items() if v is not None}
+
+
+PLAYGROUND = (Path(__file__).parent / "playground.html").read_text()
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def playground():
+    return PLAYGROUND
 
 
 @app.get("/read")

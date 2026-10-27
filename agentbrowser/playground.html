@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agentbrowser playground</title>
+<style>
+  :root { --bg:#fafaf8; --card:#fff; --text:#1f1e1c; --muted:#6b6a65; --line:#e4e2da; --accent:#0f6e56; --accent-bg:#e1f5ee; --warn:#993c1d; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1b19; --card:#252523; --text:#ecebe6; --muted:#a3a29b; --line:#3a3936; --accent:#5dcaa5; --accent-bg:#0b3a2f; --warn:#f0997b; } }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, sans-serif; max-width:720px; margin-inline:auto; }
+  h1 { font-size:20px; font-weight:600; margin:4px 0 2px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px; }
+  input { width:100%; padding:10px 12px; font-size:16px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--text); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  button { flex:1 1 auto; padding:10px 12px; font-size:15px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--text); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .stats { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .pill { background:var(--accent-bg); color:var(--accent); border-radius:999px; padding:2px 10px; font-size:13px; }
+  .el { display:flex; justify-content:space-between; gap:8px; padding:8px 0; border-top:1px solid var(--line); font-size:14px; }
+  .el:first-child { border-top:0; }
+  .el small { color:var(--muted); }
+  pre { white-space:pre-wrap; word-break:break-word; font-size:13px; max-height:260px; overflow:auto; margin:0; }
+  .err { color:var(--warn); }
+  h2 { font-size:15px; font-weight:600; margin:0 0 6px; }
+</style>
+</head>
+<body>
+<h1>agentbrowser</h1>
+<div class="sub">What an AI agent sees: text, element refs, token count. Tap an element to act on it.</div>
+
+<div class="card">
+  <input id="url" type="url" placeholder="https://news.ycombinator.com" value="https://news.ycombinator.com">
+  <div class="row">
+    <button class="primary" onclick="read()">Fast read</button>
+    <button onclick="openPage()">Open in browser</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Skills</h2>
+  <div class="row">
+    <button id="recBtn" onclick="toggleRecord()">Start recording</button>
+    <button onclick="listSkills()">My skills</button>
+    <button onclick="listApis()">Discovered APIs</button>
+  </div>
+</div>
+
+<div id="out"></div>
+
+<script>
+let recording = false;
+const out = document.getElementById('out');
+
+async function call(path, opts) {
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.statusText);
+  return data;
+}
+const post = (path, body) => call(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function busy(msg) { out.innerHTML = `<div class="card">${esc(msg)}…</div>`; }
+function fail(e) { out.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+
+function render(snap) {
+  const els = snap.elements || [];
+  const stats = [
+    snap.via ? `via ${snap.via}` : null,
+    snap.ms != null ? `${snap.ms} ms` : null,
+    snap.tokens != null ? `${snap.tokens} tokens` : null,
+    els.length ? `${els.length} elements` : null,
+    snap.diff ? 'diff' : null,
+  ].filter(Boolean).map(s => `<span class="pill">${s}</span>`).join('');
+  const list = els.slice(0, 60).map(e => `
+    <div class="el"><div><b>${esc(e.ref)}</b> ${esc(e.role)} <small>${esc(e.name)}</small></div>
+      <div>${e.role === 'textbox'
+        ? `<button onclick="typeInto('${e.ref}')">Type</button>`
+        : `<button onclick="clickEl('${e.ref}')">Click</button>`}</div></div>`).join('');
+  const links = (snap.links || []).slice(0, 15).map(l => `<div class="el"><small>${esc(l.text)}</small></div>`).join('');
+  out.innerHTML = `
+    <div class="card"><div class="stats">${stats}</div><b>${esc(snap.title)}</b><br><small>${esc(snap.url)}</small></div>
+    ${els.length ? `<div class="card"><h2>Interactive elements</h2>${list}</div>` : ''}
+    ${links ? `<div class="card"><h2>Links</h2>${links}</div>` : ''}
+    <div class="card"><h2>Text the agent reads</h2><pre>${esc(snap.text)}</pre></div>`;
+}
+
+async function read() {
+  busy('Reading');
+  try { render(await call('/read?url=' + encodeURIComponent(document.getElementById('url').value))); } catch (e) { fail(e); }
+}
+async function openPage() {
+  busy('Opening');
+  try {
+    const t0 = performance.now();
+    const r = await post('/act', { action: 'goto', url: document.getElementById('url').value });
+    const snap = await call('/snapshot');
+    snap.ms = Math.round(performance.now() - t0);
+    render(r.ok ? snap : r.snapshot || snap);
+  } catch (e) { fail(e); }
+}
+async function clickEl(ref) {
+  busy('Clicking ' + ref);
+  try { const r = await post('/act', { action: 'click', ref }); r.ok ? render(await call('/snapshot')) : fail(new Error(r.results.at(-1).error)); } catch (e) { fail(e); }
+}
+async function typeInto(ref) {
+  const text = prompt('Text to type into ' + ref);
+  if (text === null) return;
+  busy('Typing');
+  try { await post('/act', { action: 'type', ref, text }); render(await call('/snapshot')); } catch (e) { fail(e); }
+}
+async function toggleRecord() {
+  const btn = document.getElementById('recBtn');
+  try {
+    if (!recording) {
+      const name = prompt('Skill name', 'my skill');
+      if (!name) return;
+      await post('/skills/record', { name });
+      recording = true; btn.textContent = 'Stop recording'; btn.classList.add('primary');
+    } else {
+      const s = await post('/skills/stop', { params: {} });
+      recording = false; btn.textContent = 'Start recording'; btn.classList.remove('primary');
+      out.innerHTML = `<div class="card">Saved <b>${esc(s.name)}</b> with ${s.steps.length} steps. Open "My skills" to replay it with no AI.</div>`;
+    }
+  } catch (e) { fail(e); }
+}
+async function listSkills() {
+  try {
+    const skills = await call('/skills');
+    out.innerHTML = `<div class="card"><h2>Skills</h2>${skills.length ? skills.map(s => `
+      <div class="el"><div><b>${esc(s.name)}</b> <small>${s.steps} steps${s.params.length ? ', needs ' + esc(s.params.join(', ')) : ''}</small></div>
+      <button onclick="replay('${esc(s.name)}', ${esc(JSON.stringify(s.params))})">Replay</button></div>`).join('') : '<small>None yet. Record one first.</small>'}</div>`;
+  } catch (e) { fail(e); }
+}
+async function replay(name, params) {
+  const values = {};
+  for (const p of params) { const v = prompt('Value for ' + p); if (v === null) return; values[p] = v; }
+  busy('Replaying ' + name);
+  try {
+    const r = await post('/skills/' + encodeURIComponent(name) + '/replay', { params: values });
+    if (r.ok) {
+      const snap = await call('/snapshot');
+      render(snap);
+      out.insertAdjacentHTML('afterbegin', `<div class="card"><span class="pill">${r.steps} steps in ${r.ms} ms, 0 LLM calls</span></div>`);
+    } else {
+      render(r.snapshot);
+      out.insertAdjacentHTML('afterbegin', `<div class="card err">Step ${r.failed_step + 1} failed: ${esc(r.error)}. The agent would take over from here.</div>`);
+    }
+  } catch (e) { fail(e); }
+}
+async function listApis() {
+  try {
+    const apis = await call('/apis');
+    out.innerHTML = `<div class="card"><h2>Discovered APIs</h2>${apis.length ? apis.map(a => `
+      <div class="el"><div><b>${esc(a.method)}</b> ${esc(a.host)}${esc(a.path)}<br><small>${a.hits} hits, status ${a.status}</small></div></div>`).join('')
+      : '<small>None yet. Open a site that loads data with fetch/XHR, then check again.</small>'}</div>`;
+  } catch (e) { fail(e); }
+}
+</script>
+</body>
+</html>
