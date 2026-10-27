@@ -42,13 +42,20 @@
     }
     const tag = el.tagName.toLowerCase();
     if (tag === 'input' && ['submit', 'button'].includes(el.type)) return el.value || '';
-    return el.innerText || el.placeholder || el.title || el.getAttribute('name') || el.alt || '';
+    const own = el.innerText || el.placeholder || el.title || el.getAttribute('name') || el.alt || '';
+    if (own.trim()) return own;
+    const child = el.querySelector('[aria-label],[title],img[alt]');
+    if (child) return child.getAttribute('aria-label') || child.getAttribute('title') || child.getAttribute('alt') || '';
+    return '';
   };
 
   let next = window.__abNext || 1;
   const elements = [];
   document.querySelectorAll(INTERACTIVE).forEach((el) => {
     if (!visible(el) || el.disabled) return;
+    const tagName = el.tagName.toLowerCase();
+    const isField = ['input', 'textarea', 'select'].includes(tagName);
+    if (!isField && !String(labelOf(el)).trim()) return;
     let ref = el.getAttribute('data-ab-ref');
     if (!ref) {
       ref = 'e' + next++;
