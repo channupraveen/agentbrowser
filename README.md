@@ -26,6 +26,31 @@ Most AI browser agents are slow for the same reason: every step is screenshot �
 3. Open the **Ports** tab, then the globe icon next to port **8787**. The playground opens.
 4. Enter a URL and tap **Fast read** or **Open in browser**. Then tap elements, record a skill, and replay it with no AI.
 
+## Use it from Claude (MCP)
+
+agentbrowser ships an MCP server, so Claude (or any MCP client) can drive it directly: the AI is the brain, agentbrowser is the hands, and no separate LLM API key is needed.
+
+Tools: `read`, `open`, `snapshot`, `act` (batched actions), `record_start`, `record_stop`, `list_skills`, `replay`, `list_apis`, `call_api`.
+
+In the Claude desktop app: **Settings → Developer → Edit Config**, and add (Windows example, adjust paths):
+
+```json
+{
+  "mcpServers": {
+    "agentbrowser": {
+      "command": "C:\\Users\\you\\Desktop\\agentbrowser\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "agentbrowser.mcp_server"],
+      "env": {
+        "AGENTBROWSER_DATA": "C:\\Users\\you\\Desktop\\agentbrowser\\.agentbrowser",
+        "AGENTBROWSER_HEADLESS": "0"
+      }
+    }
+  }
+}
+```
+
+Restart the Claude app. Set `AGENTBROWSER_HEADLESS` to `"1"` to hide the Chromium window. Don't run the playground server at the same time: both use the same browser profile.
+
 ## Quick start
 
 ```bash
@@ -85,7 +110,7 @@ See `examples/agent.py` for a full agent loop with OpenAI or Groq.
 
 ## Roadmap
 
-- [ ] MCP server so Claude Desktop / Claude Code can use it directly
+- [x] MCP server so Claude Desktop / Claude Code can use it directly
 - [ ] Goal-aware snapshot pruning with a small local model
 - [ ] Speculative prefetch of likely next links while the LLM thinks
 - [ ] Parallel tab swarm for fan-out tasks (building on [SwarmAI](https://github.com/channupraveen/Ai-swarm))
