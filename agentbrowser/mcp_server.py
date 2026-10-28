@@ -1,6 +1,6 @@
 """MCP server: lets Claude (or any MCP client) drive agentbrowser directly.
 
-The AI client is the brain; this server is the hands. No separate LLM API key is
+The AI client is the brain; this server is the hands. No separate LLM account is
 needed. Every tool returns compact text, so pages cost few tokens.
 
 Run:  python -m agentbrowser.mcp_server        (stdio transport)

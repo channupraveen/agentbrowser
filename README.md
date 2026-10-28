@@ -28,7 +28,7 @@ Most AI browser agents are slow for the same reason: every step is screenshot â†
 
 ## Use it from Claude (MCP)
 
-agentbrowser ships an MCP server, so Claude (or any MCP client) can drive it directly: the AI is the brain, agentbrowser is the hands, and no separate LLM API key is needed.
+agentbrowser ships an MCP server, so Claude (or any MCP client) can drive it directly: the AI is the brain, agentbrowser is the hands, with no separate LLM account needed.
 
 Tools: `read`, `open`, `snapshot`, `act` (batched actions), `record_start`, `record_stop`, `list_skills`, `replay`, `list_apis`, `call_api`.
 
@@ -107,8 +107,6 @@ async with AgentBrowser() as b:
     # Next time: no LLM at all
     await b.replay("login", {"email": "me@x.com", "password": "secret"})
 ```
-
-See `examples/agent.py` for a full agent loop with OpenAI or Groq.
 
 ## Example snapshot
 

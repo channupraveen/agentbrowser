@@ -1,4 +1,4 @@
-"""HTTP API so any agent (Claude, Groq, local models, SwarmAI) can drive the browser.
+"""HTTP API so any agent (Claude, local models, SwarmAI) can drive the browser.
 
 Run:  uvicorn agentbrowser.server:app --port 8787
 """
