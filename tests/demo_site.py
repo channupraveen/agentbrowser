@@ -62,7 +62,8 @@ class Handler(BaseHTTPRequestHandler):
         if path in routes:
             body, ctype = routes[path].encode(), "text/html; charset=utf-8"
         elif path == "/ua":
-            body, ctype = json.dumps({"ua": self.headers.get("User-Agent", "")}).encode(), "application/json"
+            body, ctype = json.dumps({"ua": self.headers.get("User-Agent", ""),
+                                      "hints": self.headers.get("sec-ch-ua", "")}).encode(), "application/json"
         elif path.startswith("/api/users/") and path.endswith("/orders"):
             body, ctype = json.dumps(ORDERS).encode(), "application/json"
         else:

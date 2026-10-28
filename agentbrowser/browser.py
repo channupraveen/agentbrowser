@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -68,6 +69,8 @@ class AgentBrowser:
         self.context: BrowserContext | None = None
         self.tabs: dict[str, Page] = {}
         self._last: dict[str, dict] = {}
+        self._ua: str | None = None
+        self._ua_meta: dict | None = None
 
     # --- lifecycle -------------------------------------------------------
     async def start(self) -> "AgentBrowser":
@@ -80,12 +83,35 @@ class AgentBrowser:
         ua = await page.evaluate("navigator.userAgent")
         if "HeadlessChrome" in ua:
             await self.context.close()
-            self.context = await self._launch(profile, user_agent=ua.replace("HeadlessChrome", "Chrome"))
+            self._ua = ua.replace("HeadlessChrome", "Chrome")
+            major = re.search(r"Chrome/(\d+)", self._ua)
+            if major:
+                v = major.group(1)
+                brands = [{"brand": "Not_A Brand", "version": "8"}, {"brand": "Chromium", "version": v},
+                          {"brand": "Google Chrome", "version": v}]
+                platform = ("Windows" if "Windows" in ua else "macOS" if "Mac OS" in ua else "Linux")
+                self._ua_meta = {"brands": brands, "fullVersionList": brands, "platform": platform,
+                                 "platformVersion": "", "architecture": "x86", "model": "", "mobile": False}
+            self.context = await self._launch(profile, user_agent=self._ua)
+            for p in self.context.pages:
+                await self._patch_page(p)
+            self.context.on("page", lambda p: asyncio.ensure_future(self._patch_page(p)))
         self.context.set_default_timeout(self.timeout)
         if self.block_resources:
             await self.context.route("**/*", self._route)
         self.context.on("response", self.apis.on_response)
         return self
+
+    async def _patch_page(self, page: Page) -> None:
+        """Make the client-hint headers (sec-ch-ua) match the normal Chrome user agent."""
+        if not self._ua_meta:
+            return
+        try:
+            cdp = await self.context.new_cdp_session(page)
+            await cdp.send("Emulation.setUserAgentOverride",
+                           {"userAgent": self._ua, "userAgentMetadata": self._ua_meta})
+        except Exception:
+            pass  # page closed or non-Chromium engine
 
     async def _launch(self, profile: str, user_agent: str | None = None) -> BrowserContext:
         return await self._pw.chromium.launch_persistent_context(
@@ -116,7 +142,11 @@ class AgentBrowser:
         page = self.tabs.get(tab_id)
         if page is None or page.is_closed():
             existing = [p for p in self.context.pages if p not in self.tabs.values()]
-            page = existing[0] if existing else await self.context.new_page()
+            if existing:
+                page = existing[0]
+            else:
+                page = await self.context.new_page()
+                await self._patch_page(page)
             self.tabs[tab_id] = page
         return page
 
