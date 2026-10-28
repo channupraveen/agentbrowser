@@ -184,13 +184,15 @@ def _serve_http(port: int) -> None:
         token = secrets.token_urlsafe(24)
         token_file.write_text(token)
 
-    mcp.settings.host = "127.0.0.1"  # only reachable through your tunnel, never your LAN
+    # Local default: only reachable through your tunnel, never your LAN.
+    # In a container set AGENTBROWSER_MCP_HOST=0.0.0.0 so the platform's proxy can reach it.
+    mcp.settings.host = os.getenv("AGENTBROWSER_MCP_HOST", "127.0.0.1")
     mcp.settings.port = port
     mcp.settings.streamable_http_path = f"/{token}/mcp"
     # Requests arrive via the tunnel with its public Host header; the secret path is the guard.
     mcp.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
 
-    print(f"agentbrowser MCP (HTTP) listening on http://127.0.0.1:{port}")
+    print(f"agentbrowser MCP (HTTP) listening on http://{mcp.settings.host}:{port}")
     print(f"Connector path: /{token}/mcp")
     print(f"Add as a custom connector:  https://<your-tunnel-host>/{token}/mcp")
     print(f"(token saved in {token_file}; keep it secret)", flush=True)
@@ -202,7 +204,8 @@ def main() -> None:
 
     ap = argparse.ArgumentParser(prog="agentbrowser-mcp")
     ap.add_argument("--http", action="store_true", help="serve over HTTP for remote connectors")
-    ap.add_argument("--port", type=int, default=int(os.getenv("AGENTBROWSER_MCP_PORT", "8790")))
+    ap.add_argument("--port", type=int,
+                    default=int(os.getenv("AGENTBROWSER_MCP_PORT") or os.getenv("PORT") or "8790"))
     args = ap.parse_args()
     if args.http:
         _serve_http(args.port)
