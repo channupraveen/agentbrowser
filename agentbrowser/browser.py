@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -72,7 +73,7 @@ class AgentBrowser:
     async def start(self) -> "AgentBrowser":
         self._pw = await async_playwright().start()
         self.context = await self._pw.chromium.launch_persistent_context(
-            str(self.data_dir / "profile"), headless=self.headless,
+            os.getenv("AGENTBROWSER_PROFILE") or str(self.data_dir / "profile"), headless=self.headless,
             viewport={"width": 1280, "height": 900},
         )
         self.context.set_default_timeout(self.timeout)

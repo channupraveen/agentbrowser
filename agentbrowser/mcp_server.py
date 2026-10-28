@@ -163,8 +163,51 @@ async def call_api(url: str, method: str = "GET", params: dict[str, Any] | None 
     return f"status {r['status']} in {r['ms']} ms\n{body[:6000]}"
 
 
+def _serve_http(port: int) -> None:
+    """Serve over Streamable HTTP so it can be added as a remote/custom connector.
+
+    The endpoint lives under a secret path (/<token>/mcp): anyone without the token gets 404.
+    Put it behind an HTTPS tunnel (e.g. `cloudflared tunnel --url http://localhost:<port>`)
+    and add https://<tunnel-host>/<token>/mcp as a custom connector in Claude.
+    """
+    import secrets
+    from pathlib import Path
+
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    data = Path(os.getenv("AGENTBROWSER_DATA", ".agentbrowser"))
+    data.mkdir(parents=True, exist_ok=True)
+    token_file = data / "mcp_token.txt"
+    token = os.getenv("AGENTBROWSER_MCP_TOKEN") or (
+        token_file.read_text().strip() if token_file.exists() else "")
+    if not token:
+        token = secrets.token_urlsafe(24)
+        token_file.write_text(token)
+
+    mcp.settings.host = "127.0.0.1"  # only reachable through your tunnel, never your LAN
+    mcp.settings.port = port
+    mcp.settings.streamable_http_path = f"/{token}/mcp"
+    # Requests arrive via the tunnel with its public Host header; the secret path is the guard.
+    mcp.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
+    print(f"agentbrowser MCP (HTTP) listening on http://127.0.0.1:{port}")
+    print(f"Connector path: /{token}/mcp")
+    print(f"Add as a custom connector:  https://<your-tunnel-host>/{token}/mcp")
+    print(f"(token saved in {token_file}; keep it secret)", flush=True)
+    mcp.run(transport="streamable-http")
+
+
 def main() -> None:
-    mcp.run()
+    import argparse
+
+    ap = argparse.ArgumentParser(prog="agentbrowser-mcp")
+    ap.add_argument("--http", action="store_true", help="serve over HTTP for remote connectors")
+    ap.add_argument("--port", type=int, default=int(os.getenv("AGENTBROWSER_MCP_PORT", "8790")))
+    args = ap.parse_args()
+    if args.http:
+        _serve_http(args.port)
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":

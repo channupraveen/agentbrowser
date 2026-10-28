@@ -51,6 +51,19 @@ In the Claude desktop app: **Settings → Developer → Edit Config**, and add (
 
 Restart the Claude app. Set `AGENTBROWSER_HEADLESS` to `"1"` to hide the Chromium window. Don't run the playground server at the same time: both use the same browser profile.
 
+### Use it from any device (remote connector)
+
+Local MCP servers only work in the desktop app on that machine. To use agentbrowser from your phone too, run it as an HTTP connector behind an HTTPS tunnel:
+
+```powershell
+winget install --id Cloudflare.cloudflared      # once
+powershell -ExecutionPolicy Bypass -File .\start-connector.ps1
+```
+
+It prints a link like `https://<random>.trycloudflare.com/<secret>/mcp` (also copied to your clipboard). In Claude, go to **Settings → Connectors → Add custom connector** and paste it. Keep the window open and the machine awake.
+
+The secret part of the link is the only protection, so don't share it. Requests to any other path get 404. The quick-tunnel address changes each time you restart the script; use a named Cloudflare tunnel if you want a permanent one. On other systems: `python -m agentbrowser.mcp_server --http` plus any HTTPS tunnel to port 8790.
+
 ## Quick start
 
 ```bash
