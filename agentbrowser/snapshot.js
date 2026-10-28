@@ -36,10 +36,19 @@
   const labelOf = (el) => {
     const aria = el.getAttribute('aria-label');
     if (aria) return aria;
+    const labelledby = el.getAttribute('aria-labelledby');
+    if (labelledby) {
+      const t = labelledby.split(/\s+/).map(id => document.getElementById(id)).filter(Boolean)
+        .map(n => n.innerText).join(' ').trim();
+      if (t) return t;
+    }
     if (el.id) {
       const lab = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
       if (lab && lab.innerText.trim()) return lab.innerText;
     }
+    // <label><input type="radio"> Small</label>: the label wraps the input.
+    const wrap = el.closest('label');
+    if (wrap && wrap.innerText.trim()) return wrap.innerText;
     const tag = el.tagName.toLowerCase();
     if (tag === 'input' && ['submit', 'button'].includes(el.type)) return el.value || '';
     const own = el.innerText || el.placeholder || el.title || el.getAttribute('name') || el.alt || '';

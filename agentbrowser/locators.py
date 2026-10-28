@@ -34,6 +34,7 @@ DESCRIBE_JS = r"""
     const lab = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
     if (lab) name = lab.innerText;
   }
+  if (!name && el.closest('label')) name = el.closest('label').innerText;
   if (!name && tag === 'input' && ['submit', 'button'].includes(el.type)) name = el.value;
   if (!name && ['a', 'button', 'summary'].includes(tag)) name = el.innerText;
   const path = [];

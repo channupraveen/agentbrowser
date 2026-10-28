@@ -15,6 +15,7 @@ SKIP = {"script", "style", "noscript", "svg", "head", "template", "iframe"}
 INLINE_GAP = {"a", "span", "td", "th", "button", "label", "b", "strong", "em", "i", "small"}
 BLOCK = {"p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "br", "section",
          "article", "header", "footer", "ul", "ol", "table", "pre", "blockquote"}
+SCRIPT_TAG = re.compile(r"<script\b", re.I)
 JS_SHELL_HINTS = re.compile(r'id="(root|app|__next|__nuxt)"\s*>\s*</div>|enable javascript', re.I)
 
 
@@ -90,6 +91,10 @@ async def fast_read(url: str, timeout: float = 10.0) -> dict | None:
     if "html" not in r.headers.get("content-type", ""):
         return None
     title, text, links = html_to_text(r.text)
-    if len(text) < 200 or JS_SHELL_HINTS.search(r.text):
+    if JS_SHELL_HINTS.search(r.text):
+        return None
+    # Very little text plus scripts usually means JavaScript fills the page in; without
+    # scripts, a short page is simply short and plain HTTP is enough.
+    if len(text) < 200 and SCRIPT_TAG.search(r.text):
         return None
     return {"url": str(r.url), "title": title, "text": text, "links": links, "via": "http"}

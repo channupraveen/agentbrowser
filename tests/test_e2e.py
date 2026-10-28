@@ -119,3 +119,27 @@ def test_snapshot_waits_for_late_javascript_content(site, tmp_path):
     assert "arrives 700 ms after" in after_click["text"]
     assert replayed["ok"] and replayed["llm_calls"] == 0
     assert "arrives 700 ms after" in after_replay["text"]
+
+
+def test_wrapped_labels_short_static_pages_and_user_agent(site, tmp_path):
+    async def go():
+        async with AgentBrowser(tmp_path) as b:
+            short = await b.read(f"{site}/short")
+            await b.act({"action": "goto", "url": f"{site}/pizza"})
+            snap = await b.snapshot()
+            nav_ua = await (await b.tab()).evaluate("navigator.userAgent")
+            await b.act({"action": "goto", "url": f"{site}/ua"})
+            header_ua = await (await b.tab()).evaluate("document.body.innerText")
+            # A hash change on the same page should still produce a diff.
+            await b.act({"action": "goto", "url": f"{site}/pizza"})
+            await b.snapshot()
+            await b.act({"action": "goto", "url": f"{site}/pizza#x"})
+            hashed = await b.snapshot(diff=True)
+            return short, snap, nav_ua, header_ua, hashed
+
+    short, snap, nav_ua, header_ua, hashed = run(go())
+    assert short["via"] == "http"
+    names = {(e["role"], e["name"]) for e in snap["elements"]}
+    assert ("radio", "Small") in names and ("radio", "Large") in names and ("checkbox", "Bacon") in names
+    assert "Headless" not in nav_ua and "Headless" not in header_ua
+    assert hashed["diff"] is True

@@ -72,15 +72,26 @@ class AgentBrowser:
     # --- lifecycle -------------------------------------------------------
     async def start(self) -> "AgentBrowser":
         self._pw = await async_playwright().start()
-        self.context = await self._pw.chromium.launch_persistent_context(
-            os.getenv("AGENTBROWSER_PROFILE") or str(self.data_dir / "profile"), headless=self.headless,
-            viewport={"width": 1280, "height": 900},
-        )
+        profile = os.getenv("AGENTBROWSER_PROFILE") or str(self.data_dir / "profile")
+        self.context = await self._launch(profile)
+        # Headless Chromium announces itself as "HeadlessChrome", which some sites block.
+        # Relaunch once with the same user agent minus "Headless".
+        page = self.context.pages[0] if self.context.pages else await self.context.new_page()
+        ua = await page.evaluate("navigator.userAgent")
+        if "HeadlessChrome" in ua:
+            await self.context.close()
+            self.context = await self._launch(profile, user_agent=ua.replace("HeadlessChrome", "Chrome"))
         self.context.set_default_timeout(self.timeout)
         if self.block_resources:
             await self.context.route("**/*", self._route)
         self.context.on("response", self.apis.on_response)
         return self
+
+    async def _launch(self, profile: str, user_agent: str | None = None) -> BrowserContext:
+        return await self._pw.chromium.launch_persistent_context(
+            profile, headless=self.headless, viewport={"width": 1280, "height": 900},
+            user_agent=user_agent,
+        )
 
     async def close(self) -> None:
         if self.context:
@@ -115,7 +126,8 @@ class AgentBrowser:
         snap = await page.evaluate(SNAPSHOT_JS, {"maxText": max_text})
         previous = self._last.get(tab)
         self._last[tab] = snap
-        if diff and previous and previous["url"] == snap["url"]:
+        same_page = previous and previous["url"].split("#")[0] == snap["url"].split("#")[0]
+        if diff and same_page:
             old = {e["ref"]: e for e in previous["elements"]}
             new = {e["ref"]: e for e in snap["elements"]}
             out = {

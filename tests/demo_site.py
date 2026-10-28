@@ -40,6 +40,14 @@ LATE = '<!doctype html><html><head><title>Late article</title></head><body><main
 
 HOME = '<!doctype html><html><head><title>Home</title></head><body><a href="/late">Read the article</a></body></html>'
 
+PIZZA = """<!doctype html><html><head><title>Pizza</title></head><body><form action="/home" method="get">
+<p><label><input type="radio" name="size" value="small"> Small</label>
+<label><input type="radio" name="size" value="large"> Large</label></p>
+<p><label><input type="checkbox" name="topping" value="bacon"> Bacon</label></p>
+<button>Order</button></form></body></html>"""
+
+SHORT = "<!doctype html><html><head><title>Short</title></head><body><p>Just a short static page.</p></body></html>"
+
 ORDERS = {"orders": [{"id": 1, "item": "Rice 5kg", "price": 420}, {"id": 2, "item": "Dal 1kg", "price": 150}]}
 
 
@@ -50,9 +58,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
         routes = {"/": LOGIN, "/dashboard": DASHBOARD, "/article": ARTICLE, "/spa": SPA,
-                  "/late": LATE, "/home": HOME}
+                  "/late": LATE, "/home": HOME, "/pizza": PIZZA, "/short": SHORT}
         if path in routes:
             body, ctype = routes[path].encode(), "text/html; charset=utf-8"
+        elif path == "/ua":
+            body, ctype = json.dumps({"ua": self.headers.get("User-Agent", "")}).encode(), "application/json"
         elif path.startswith("/api/users/") and path.endswith("/orders"):
             body, ctype = json.dumps(ORDERS).encode(), "application/json"
         else:
