@@ -34,6 +34,12 @@ SPA = '<!doctype html><html><head><title>SPA</title></head><body><div id="root">
       'document.getElementById("root").innerHTML = "<h1>Rendered by JS</h1>" + "<p>client side text</p>".repeat(20);' \
       '</script></body></html>'
 
+LATE = '<!doctype html><html><head><title>Late article</title></head><body><main id="m"></main><script>' \
+       'setTimeout(() => { document.getElementById("m").innerHTML = "<h1>Loaded later</h1><p>This article text arrives 700 ms after the page.</p>"; }, 700);' \
+       '</script></body></html>'
+
+HOME = '<!doctype html><html><head><title>Home</title></head><body><a href="/late">Read the article</a></body></html>'
+
 ORDERS = {"orders": [{"id": 1, "item": "Rice 5kg", "price": 420}, {"id": 2, "item": "Dal 1kg", "price": 150}]}
 
 
@@ -43,7 +49,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
-        routes = {"/": LOGIN, "/dashboard": DASHBOARD, "/article": ARTICLE, "/spa": SPA}
+        routes = {"/": LOGIN, "/dashboard": DASHBOARD, "/article": ARTICLE, "/spa": SPA,
+                  "/late": LATE, "/home": HOME}
         if path in routes:
             body, ctype = routes[path].encode(), "text/html; charset=utf-8"
         elif path.startswith("/api/users/") and path.endswith("/orders"):

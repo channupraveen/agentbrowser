@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from .skills import SkillStore
 
 SNAPSHOT_JS = (Path(__file__).parent / "snapshot.js").read_text()
 BLOCKED_TYPES = {"image", "font", "media"}
+SETTLE_AFTER = {"goto", "click", "press", "select", "back"}
 ACTIONS = {"goto", "click", "type", "press", "select", "check", "uncheck", "scroll", "wait_for", "back"}
 
 
@@ -188,8 +190,40 @@ class AgentBrowser:
             elif name == "uncheck":
                 await target.uncheck()
 
+        if name in SETTLE_AFTER:
+            await self._settle(page)
         self.skills.add(step)
         return {"ok": True, "action": name, "url": page.url}
+
+    async def _settle(self, page: Page, max_ms: int = 2500) -> None:
+        """Wait until the page has finished rendering, so snapshots aren't taken too early.
+
+        Many sites fill in their content with JavaScript after the HTML arrives. We poll
+        the page text every 100 ms and return once it is non-empty and has stopped
+        changing, capped at max_ms so a busy page never blocks the agent for long.
+        Pages that are already rendered settle in ~200 ms, so replay stays fast.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + max_ms / 1000
+        left = lambda: max(0, int((deadline - loop.time()) * 1000))  # noqa: E731
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=left() or 1)
+        except Exception:
+            pass
+        last, stable = -1, 0
+        while loop.time() < deadline:
+            try:
+                n = await page.evaluate("document.body ? document.body.innerText.length : 0")
+            except Exception:  # page is mid-navigation
+                n = -1
+            if n > 0 and n == last:
+                stable += 1
+                if stable >= 2:
+                    return
+            else:
+                stable = 0
+            last = n
+            await asyncio.sleep(0.1)
 
     async def act_batch(self, actions: list[dict], tab: str = "main", snapshot: bool = True) -> dict:
         """Run several actions in one round-trip (fill a whole form, then submit)."""
@@ -224,6 +258,8 @@ class AgentBrowser:
         for i, step in enumerate(skill["steps"]):
             try:
                 await self._run_step(page, step, params)
+                if step["action"] in SETTLE_AFTER:
+                    await self._settle(page)
             except Exception as e:
                 # Hand back to the agent exactly where the site diverged.
                 return {"ok": False, "skill": name, "failed_step": i, "step": step,

@@ -99,3 +99,23 @@ def test_replay_hands_back_to_agent_when_site_changes(site, tmp_path):
     result = run(go())
     assert not result["ok"] and result["failed_step"] == 0
     assert result["snapshot"]["title"] == "Shop login"
+
+
+def test_snapshot_waits_for_late_javascript_content(site, tmp_path):
+    """Pages that render their content with JS after load (like many blogs) must not look empty."""
+    async def go():
+        async with AgentBrowser(tmp_path) as b:
+            await b.act({"action": "goto", "url": f"{site}/home"})
+            home = await b.snapshot()
+            await b.record_start("open article")
+            await b.act({"action": "click", "ref": ref_for(home, "Read the article")})
+            after_click = await b.snapshot()
+            await b.record_stop()
+            replayed = await b.replay("open article", tab="t2")
+            after_replay = await b.snapshot(tab="t2")
+            return after_click, replayed, after_replay
+
+    after_click, replayed, after_replay = run(go())
+    assert "arrives 700 ms after" in after_click["text"]
+    assert replayed["ok"] and replayed["llm_calls"] == 0
+    assert "arrives 700 ms after" in after_replay["text"]
