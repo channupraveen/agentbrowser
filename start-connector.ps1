@@ -3,7 +3,8 @@
 #
 #   powershell -ExecutionPolicy Bypass -File .\start-connector.ps1
 #
-# Needs cloudflared:  winget install --id Cloudflare.cloudflared
+# Needs cloudflared, either on PATH or as cloudflared.exe in this folder:
+#   Invoke-WebRequest -Uri https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile cloudflared.exe
 
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
@@ -15,10 +16,15 @@ $env:AGENTBROWSER_DATA = Join-Path $root ".agentbrowser"
 $env:AGENTBROWSER_PROFILE = Join-Path $env:AGENTBROWSER_DATA "profile-remote"
 if (-not $env:AGENTBROWSER_HEADLESS) { $env:AGENTBROWSER_HEADLESS = "0" }
 
-if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) {
-    Write-Host "cloudflared is not installed. Run:  winget install --id Cloudflare.cloudflared" -ForegroundColor Yellow
-    Write-Host "then open a NEW PowerShell window and run this script again."
-    exit 1
+$cloudflared = Join-Path $root "cloudflared.exe"
+if (-not (Test-Path $cloudflared)) {
+    $cmd = Get-Command cloudflared -ErrorAction SilentlyContinue
+    if ($cmd) { $cloudflared = $cmd.Source }
+    else {
+        Write-Host "cloudflared not found. Download it into this folder with:" -ForegroundColor Yellow
+        Write-Host "  Invoke-WebRequest -Uri https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile cloudflared.exe"
+        exit 1
+    }
 }
 
 $server = Start-Process -FilePath $py -ArgumentList "-m", "agentbrowser.mcp_server", "--http", "--port", "$port" `
@@ -29,7 +35,7 @@ $token = (Get-Content $tokenFile -Raw).Trim()
 
 $log = Join-Path $env:TEMP "agentbrowser-tunnel.log"
 Remove-Item $log -ErrorAction SilentlyContinue
-$tunnel = Start-Process cloudflared -ArgumentList "tunnel", "--url", "http://127.0.0.1:$port", "--no-autoupdate", "--logfile", "`"$log`"" `
+$tunnel = Start-Process $cloudflared -ArgumentList "tunnel", "--url", "http://127.0.0.1:$port", "--no-autoupdate", "--logfile", "`"$log`"" `
     -PassThru -WindowStyle Hidden
 
 $url = $null

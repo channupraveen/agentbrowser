@@ -56,7 +56,7 @@ Restart the Claude app. Set `AGENTBROWSER_HEADLESS` to `"1"` to hide the Chromiu
 Local MCP servers only work in the desktop app on that machine. To use agentbrowser from your phone too, run it as an HTTP connector behind an HTTPS tunnel:
 
 ```powershell
-winget install --id Cloudflare.cloudflared      # once
+Invoke-WebRequest -Uri https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile cloudflared.exe   # once
 powershell -ExecutionPolicy Bypass -File .\start-connector.ps1
 ```
 
