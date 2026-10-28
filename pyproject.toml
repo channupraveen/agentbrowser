@@ -22,4 +22,4 @@ agentbrowser-mcp = "agentbrowser.mcp_server:main"
 packages = ["agentbrowser"]
 
 [tool.setuptools.package-data]
-agentbrowser = ["snapshot.js", "playground.html"]
+agentbrowser = ["snapshot.js", "playground.html", "landing.html"]

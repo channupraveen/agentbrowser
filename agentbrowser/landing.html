@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agentbrowser: a fast browser for AI agents</title>
+<meta name="description" content="Open-source browser for AI agents: compact text snapshots, record-once/replay-instantly skills, API discovery, and an MCP server for Claude.">
+<style>
+  :root { --bg:#0b0f14; --card:#121821; --text:#e8edf3; --muted:#9aa7b4; --line:#223042; --accent:#34d399; --accent2:#60a5fa; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f7f8fa; --card:#fff; --text:#111827; --muted:#5b6472; --line:#e3e7ed; --accent:#059669; --accent2:#2563eb; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:56px 20px 64px; }
+  .tag { display:inline-block; font-size:13px; color:var(--accent); border:1px solid var(--line); border-radius:999px; padding:3px 12px; margin-bottom:18px; }
+  h1 { font-size:clamp(30px,5vw,46px); line-height:1.15; margin:0 0 14px; letter-spacing:-.02em; }
+  .lead { font-size:19px; color:var(--muted); margin:0 0 28px; max-width:680px; }
+  .btns { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:44px; }
+  .btn { text-decoration:none; padding:11px 18px; border-radius:10px; font-weight:600; border:1px solid var(--line); color:var(--text); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#04130d; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:44px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .stat b { display:block; font-size:28px; color:var(--accent); letter-spacing:-.01em; }
+  .stat span { color:var(--muted); font-size:14px; }
+  h2 { font-size:22px; margin:0 0 14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; margin-bottom:44px; }
+  .f { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .f h3 { margin:0 0 6px; font-size:17px; }
+  .f p { margin:0; color:var(--muted); font-size:15px; }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; overflow-x:auto; font-size:14px; line-height:1.5; margin:0 0 44px; }
+  .ok { color:var(--accent); }
+  footer { color:var(--muted); font-size:14px; border-top:1px solid var(--line); padding-top:18px; }
+  a { color:var(--accent2); }
+</style>
+</head>
+<body>
+<main>
+  <span class="tag">Open source · MIT · Live</span>
+  <h1>agentbrowser: a fast browser for AI agents</h1>
+  <p class="lead">AI agents usually browse with screenshots, which is slow and expensive. agentbrowser gives them the page as compact text, lets them act by exact element reference, and replays tasks they've done before with no AI at all.</p>
+  <div class="btns">
+    <a class="btn primary" href="https://github.com/channupraveen/agentbrowser">View on GitHub</a>
+    <a class="btn" href="https://github.com/channupraveen/agentbrowser#use-it-with-claude">Use it with Claude</a>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>~64% fewer</b><span>tokens than JSON: Hacker News front page, 2,412 vs 6,667</span></div>
+    <div class="stat"><b>0 AI calls</b><span>to replay a recorded task, e.g. an 8-step form in 2.5 s</span></div>
+    <div class="stat"><b>~20 ms</b><span>to call a site's own JSON API discovered while browsing</span></div>
+    <div class="stat"><b>10 / 10</b><span>MCP tools passing on this live server</span></div>
+  </div>
+
+  <h2>What makes it different</h2>
+  <div class="grid">
+    <div class="f"><h3>Text, not screenshots</h3><p>Each page comes back as a short list of elements with refs (<code>e11 link …</code>) plus readable text, and follow-up steps only send what changed.</p></div>
+    <div class="f"><h3>Record once, replay instantly</h3><p>Finished tasks are saved as skills with parameters. Replays run with no AI; if the site changed, the agent takes over at the exact step that broke.</p></div>
+    <div class="f"><h3>API discovery</h3><p>JSON calls a site makes while you browse are catalogued, so the agent can fetch the data directly instead of clicking through the UI.</p></div>
+    <div class="f"><h3>Works with Claude (MCP)</h3><p>Add it as a connector and Claude drives it. No separate AI account or API key. Runs locally, through a tunnel, or deployed like this one.</p></div>
+  </div>
+
+  <h2>What the AI actually sees</h2>
+<pre>Pizza order form
+https://httpbin.org/forms/post
+
+elements:
+e1 textbox Customer name:
+e4 radio Small [ ]
+e6 radio Large [ ]
+e8 checkbox Extra Cheese [ ]
+e13 button Submit order
+
+<span class="ok">act → type e1 "Praveen", check e6, check e8, click e13   (one call)</span>
+<span class="ok">replay "pizza-order" → 8 steps in 2.5 s, 0 AI calls</span></pre>
+
+  <footer>
+    Built by <a href="https://github.com/channupraveen">Channu Praveen Kumar</a> ·
+    This server's MCP endpoint is private; deploy your own from the <a href="https://github.com/channupraveen/agentbrowser">repo</a>.
+  </footer>
+</main>
+</body>
+</html>

@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -161,6 +162,17 @@ async def call_api(url: str, method: str = "GET", params: dict[str, Any] | None 
     r = await b.call_api(method, url, params=params, json=json_body)
     body = r["body"] if isinstance(r["body"], str) else json.dumps(r["body"])
     return f"status {r['status']} in {r['ms']} ms\n{body[:6000]}"
+
+
+LANDING = (Path(__file__).parent / "landing.html").read_text(encoding="utf-8")
+
+
+@mcp.custom_route("/", methods=["GET", "HEAD"])
+async def landing(request):
+    """Public page at the root URL, so the deployment has a shareable live link.
+    The MCP endpoint itself stays under the secret path."""
+    from starlette.responses import HTMLResponse
+    return HTMLResponse(LANDING)
 
 
 def _serve_http(port: int) -> None:
