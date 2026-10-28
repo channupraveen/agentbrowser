@@ -1,7 +1,11 @@
-"""Minimal agent loop: Groq LLM + agentbrowser.
+"""Minimal agent loop: an LLM (OpenAI or Groq) + agentbrowser.
 
+    # OpenAI (used when OPENAI_API_KEY is set)
+    export OPENAI_API_KEY=...        # PowerShell: $env:OPENAI_API_KEY="..."
+    # or Groq
     export GROQ_API_KEY=...
-    python examples/groq_agent.py "https://news.ycombinator.com" "Open the top story and summarize it"
+
+    python examples/agent.py "https://news.ycombinator.com" "Open the top story and tell me its title"
 
 The model sees compact text snapshots (not screenshots) and can send several
 actions per turn. Set RECORD=name to save the run as a replayable skill.
@@ -18,7 +22,14 @@ import httpx
 
 from agentbrowser import AgentBrowser
 
-MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+if os.getenv("OPENAI_API_KEY"):
+    PROVIDER, API_URL, API_KEY = "OpenAI", "https://api.openai.com/v1/chat/completions", os.environ["OPENAI_API_KEY"]
+    MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+elif os.getenv("GROQ_API_KEY"):
+    PROVIDER, API_URL, API_KEY = "Groq", "https://api.groq.com/openai/v1/chat/completions", os.environ["GROQ_API_KEY"]
+    MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+else:
+    sys.exit("Set OPENAI_API_KEY or GROQ_API_KEY first.")
 SYSTEM = """You control a web browser. Each turn you get a page snapshot: text plus
 interactive elements with refs (e1, e2...). Reply with JSON only:
 {"actions": [{"action": "click", "ref": "e3"}, {"action": "type", "ref": "e5", "text": "..."}]}
@@ -30,17 +41,19 @@ When the task is done reply {"done": true, "answer": "..."}."""
 async def llm(messages: list[dict]) -> dict:
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
+            API_URL,
+            headers={"Authorization": f"Bearer {API_KEY}"},
             json={"model": MODEL, "messages": messages, "temperature": 0,
                   "response_format": {"type": "json_object"}},
         )
-        r.raise_for_status()
+        if r.status_code >= 400:
+            sys.exit(f"{PROVIDER} API error {r.status_code}: {r.text[:300]}")
         return json.loads(r.json()["choices"][0]["message"]["content"])
 
 
 async def main(url: str, task: str, max_turns: int = 12) -> None:
-    async with AgentBrowser() as b:
+    print(f"Using {PROVIDER} ({MODEL}). The browser is Chromium, driven by agentbrowser.")
+    async with AgentBrowser(headless=os.getenv("AGENTBROWSER_HEADLESS", "1") != "0") as b:
         await b.act({"action": "goto", "url": url})
         if os.getenv("RECORD"):
             await b.record_start(os.environ["RECORD"])

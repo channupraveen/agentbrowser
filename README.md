@@ -70,7 +70,7 @@ async with AgentBrowser() as b:
     await b.replay("login", {"email": "me@x.com", "password": "secret"})
 ```
 
-See `examples/groq_agent.py` for a full agent loop with Groq (`llama-3.3-70b-versatile`).
+See `examples/agent.py` for a full agent loop with OpenAI or Groq.
 
 ## Example snapshot
 
